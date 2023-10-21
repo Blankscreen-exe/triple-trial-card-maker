@@ -29,6 +29,32 @@ def create_game_card(character_name, background_image, character_stats, card_bor
     card = cv2.add(card, character_avatar)
     card = cv2.add(card, character_logo)
     
+    # Resize and position each layer within the card's boundaries
+    def resize_and_position(layer, x, y):
+        if layer is not None:
+            h, w = layer.shape[:2]
+            scale = min(card_width / w, card_height / h)
+            resized_layer = cv2.resize(layer, (int(w * scale), int(h * scale)))
+            card[y:y + resized_layer.shape[0], x:x + resized_layer.shape[1]] = resized_layer
+
+    # Define the positions for each layer
+    # Adjust these values as needed to position your layers
+    character_name_x, character_name_y = 10, 10
+    background_image_x, background_image_y = 0, 0
+    character_stats_x, character_stats_y = 10, 100
+    card_border_x, card_border_y = 0, 0
+    character_avatar_x, character_avatar_y = 100, 100
+    character_logo_x, character_logo_y = 50, 10
+
+    # Resize and position each layer on the card
+    resize_and_position(character_name, character_name_x, character_name_y)
+    resize_and_position(background_image, background_image_x, background_image_y)
+    resize_and_position(character_stats, character_stats_x, character_stats_y)
+    resize_and_position(card_border, card_border_x, card_border_y)
+    resize_and_position(character_avatar, character_avatar_x, character_avatar_y)
+    resize_and_position(character_logo, character_logo_x, character_logo_y)
+
+    
     # Display the final game card
     cv2.imshow('Game Card', card)
     cv2.waitKey(0)
