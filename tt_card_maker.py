@@ -1,10 +1,12 @@
 from os import path
 from datetime import datetime as dt
-
+import numpy as np
+import cv2
+ 
 class TTCardMaker:
     
     def __init__(self):
-        self.config = None # replace this with a caller function
+        self.config = self.read_config()
         self.output_dir = path.join(".", "")
         self.config_file_path = path.join(".", "config.json")
         
@@ -24,11 +26,12 @@ class TTCardMaker:
         
     def read_config(self):
         """Used to read the json config for cards"""
-        pass
+        with open("./card_config.json", "r") as config:
+            return json.loads(config)
     
-    def read_image(self, path):
+    def read_image(self, img_key: str) -> object:
         """Reads images using opencv"""
-        pass
+        return cv2.imread(img_key)
     
     def base_card_generator(self):
         """Generates base card to draw upon"""
@@ -58,10 +61,16 @@ class TTCardMaker:
         """Extracts the star combination based on the rarity number"""
         pass
     
-    def compiler(self):
-        """Compiles the images into one single card"""
+    def compile(self):
+        """Compiles the layers into one single card image"""
         pass
     
     def dump_card(self):
         """Dumps the final card in the output directory"""
         pass
+    
+    
+if __name__=="__main__":
+    makyr = TTCardMaker()
+    
+    makyr.read_config()
