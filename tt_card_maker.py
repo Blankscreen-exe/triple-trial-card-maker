@@ -7,29 +7,106 @@ import cv2
 class TTCardMaker:
     
     def __init__(self):
-        self.config = self.read_config()
+        self.config = None
         self.output_dir = path.join(".", "")
-        self.config_file_path = path.join(".", "config.json")
         
         # Poker game card size
         self.card_width = 822 # pixel
         self.card_height = 1122 # pixel
         
         self.POSITION_CONFIG = {
-            "char_name": (0, 0),
-            "logo": (0, 0),
-            "top": (0, 0),
-            "left": (0, 0),
-            "right": (0, 0),
-            "bottom": (0, 0),
-            "stars": (0, 0),
+            "arrow_heads": {
+                "up": (0, 0),
+                "down": (0, 0),
+                "left": (0, 0),
+                "right": (0, 0)
+            },
+            "avatar": (0, 0),
+            "char_title": (0, 0),
+            "bg": {
+                "red": (0, 0),
+                "blue": (0, 0)
+            },
+            "border": (0, 0),
+            "rarity": (0, 0),
+            "stats": {
+                "top": (0, 0),
+                "bottom": (0, 0),
+                "left": (0, 0),
+                "right": (0, 0),
+            },
+            "logo": (0, 0)
         }
         
-    def read_config(self):
-        """Used to read the json config for cards"""
-        with open("./card_config.json", "r") as config:
-            return json.load(config)
+        self.SIZE_CONFIG = {
+            "arrow_heads": 000,
+            "char_title": 000,
+            "rarity": 000,
+            "stats": 000,
+            "logo": 000
+        }
+        
+        self._card_elements = {
+            "arrow_heads": {
+                "up": None,
+                "down": None,
+                "left": None,
+                "right": None
+            },
+            "avatar": None,
+            "char_title": None,
+            "bg": {
+                "red": None,
+                "blue": None
+            },
+            "border": None,
+            "rarity": None,
+            "stats": {
+                "top": None,
+                "bottom": None,
+                "left": None,
+                "right": None,
+            },
+            "logo": None
+        }
+        
+    def read_config(self, config):
+        """Used to read the config dictionary for cards"""
+        if not self.validate_config(self._card_elements, config):
+            raise KeyError("dictionary keys do not match")
+        
+        self._card_elements['arrow_heads']['up'] = config['arrow_heads']['up']
+        
+        self._card_elements = config
+        
+        return self
+        
+    def validate_config(self, dict1, dict2):
+        """Recursively check if two dictionaries and their nested dictionaries have the same keys"""
+        if isinstance(dict1, dict) and isinstance(dict2, dict):
+            keys1 = set(dict1.keys())
+            keys2 = set(dict2.keys())
+
+            if keys1 != keys2:
+                return False
+
+            for key in keys1:
+                if not validate_config(dict1[key], dict2[key]):
+                    return False
+
+        return True
     
+    def validate_key(self, dic:str, find_key:str):
+        """Recursively validates given key w.r.t category"""
+        
+        if find_key in dic:
+            return True
+        
+        for key in dic.keys():
+            if not self.validate_key(dic[key], find_key):
+                return False
+        return True
+        
     def read_image(self, img_key: str) -> object:
         """Reads images using opencv"""
         return cv2.imread(img_key)
@@ -47,10 +124,40 @@ class TTCardMaker:
         return f"{char_name}-{team}-{star_count}-{timestamp}"
     
     def avatar_extractor(self):
-        """Extracts the avatar from a picture"""
-        pass
+        """Extracts the avatar from a picture by trimming the white spaces of transparent surrounding areas and returns the rectangular shape with the character inside. the returned image has a padding of 4% on all borders"""
+        
+        # Load the image with an avatar
+        image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+
+        # Check if the image has an alpha channel
+        if image.shape[2] == 4:
+            # Extract the alpha channel
+            alpha_channel = image[:, :, 3]
+
+            # Find the coordinates of the non-zero (non-transparent) pixels
+            non_zero_coords = np.column_stack(np.where(alpha_channel > 0))
+
+            # Calculate the bounding box of non-zero pixels
+            x, y, w, h = cv2.boundingRect(non_zero_coords)
+
+            # Add a 4% padding to the bounding box
+            padding_percent = 0.04
+            padding_x = int(w * padding_percent)
+            padding_y = int(h * padding_percent)
+            x -= padding_x
+            y -= padding_y
+            w += 2 * padding_x
+            h += 2 * padding_y
+
+            # Crop the image to the bounding box with padding
+            avatar = image[y:y + h, x:x + w]
+
+            return avatar
+
+        else:
+            raise ValueError("The input image does not have an alpha channel (transparency).")
     
-    def resize_element(self, image:cv2, height:int, width:int, keep_aspect_ratio=True) -> cv2:
+    def resize_element(self, image:cv2, height:int, width:int = None, keep_aspect_ratio=True) -> cv2:
         """Resizes elements based on height by keeping the aspect ratio intact"""
         
         if keep_aspect_ratio:
@@ -86,13 +193,28 @@ class TTCardMaker:
             raise ValueError("Position coordinates exceed the dimensions of the base image.")
 
         # Copy the base image to prevent modifying the original
-        # result_image = base_image.copy()
+        result_image = base_image.copy()
 
         # Overlay the element onto the result image at the specified position
         result_image[pos_y:pos_y + image.shape[0], pos_x:pos_x + image.shape[1]] = image
 
         return result_image
     
+    def convert_to_png(input_image_path, output_image_path):
+        """Converts an image to PNG format."""
+        
+        # Read the input image
+        image = cv2.imread(input_image_path)
+
+        # Ensure that the image was successfully loaded
+        if image is not None:
+            # Convert the image to PNG format and return it as a NumPy array
+            _, buffer = cv2.imencode(".png", image)
+            png_image = np.array(buffer).tobytes()
+            return png_image
+        else:
+            raise ValueError("Failed to read the input image.")
+            
     def get_rarity(self, rarity):
         """Extracts the star combination based on the rarity number"""
         
@@ -115,6 +237,10 @@ class TTCardMaker:
 
         return star_sequence
     
+    def get_dimensions(self, image:cv2) -> tuple:
+        """Returns dimensions of a cv2 image as tuple"""
+        return image.shape
+        
     def compile(self):
         """Compiles the layers into one single card image"""
         pass
@@ -131,7 +257,13 @@ if __name__=="__main__":
     pp(makyr.read_config())
     
     star_sequence = makyr.get_rarity(4)
-    
+    print("DIMENSION ", star_sequence.shape)
     cv2.imshow("Star Sequence", star_sequence)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    resized = makyr.resize_element(star_sequence, 50, keep_aspect_ratio=True)
+    print("DIMENSION ", resized.shape)
+    cv2.imshow("Star Sequence", resized)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
