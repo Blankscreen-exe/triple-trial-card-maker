@@ -75,7 +75,7 @@ class TTCardMaker:
         if not self.validate_config(self._card_elements, config):
             raise KeyError("dictionary keys do not match")
         
-        self._card_elements['arrow_heads']['up'] = config['arrow_heads']['up']
+        self._card_elements['arrow_heads']['up'] = self.read_image(config['arrow_heads']['up'])
         
         self._card_elements = config
         
@@ -96,7 +96,7 @@ class TTCardMaker:
 
         return True
     
-    def validate_key(self, dic:str, find_key:str):
+    def validate_key(self, dic:str, find_key:str) -> bool:
         """Recursively validates given key w.r.t category"""
         
         if find_key in dic:
@@ -106,14 +106,48 @@ class TTCardMaker:
             if not self.validate_key(dic[key], find_key):
                 return False
         return True
+    
+    def validate_val(self) -> bool:
+        """Recursilvely validates that all values are not None"""
+        for key, value in dictionary.items():
+            if value is not None:
+                return True
+            if isinstance(value, dict) and has_non_none_value(value):
+                return True
+        return False
         
     def read_image(self, img_key: str) -> object:
         """Reads images using opencv"""
-        return cv2.imread(img_key)
+        try:
+            return cv2.imread(img_key)
+        except:
+            return 
+        
+    def img_path_gen(self, type, img_name) -> str:
+        """Generates image string path based on the type provided"""
+        asset_folder = "Assets"
+        if type=="bg":
+            return path.join(asset_folder, "bg", img_name)
+        elif type=="avatar":
+            return path.join(asset_folder, "avatar", img_name)
+        elif type=="arrowhead":
+            return path.join(asset_folder, "arrowhead", img_name)
+        elif type=="logo":
+            return path.join(asset_folder, "logo", img_name)
+        elif type=="stats":
+            return path.join(asset_folder, "stats", img_name)
+        elif type=="border":
+            return path.join(asset_folder, "border", img_name)
     
-    def base_card_generator(self):
+    def base_card_generator(self, height=None, width=None):
         """Generates base card to draw upon"""
-        return np.zeros((self.card_height, self.card_width, 3), dtype=np.uint8)
+        if height is None:
+            height = self.card_height
+        
+        if width is None:
+            width = self.card_width
+            
+        return np.zeros((height, width, 3), dtype=np.uint8)
     
     def output_name_generator(self, char_name, team, star_count):
         """Generates output names for the finalized cards"""
@@ -243,7 +277,7 @@ class TTCardMaker:
         
     def compile(self):
         """Compiles the layers into one single card image"""
-        pass
+        
     
     def dump_card(self):
         """Dumps the final card in the output directory"""
@@ -254,16 +288,18 @@ if __name__=="__main__":
     from pprint import pprint as pp
     makyr = TTCardMaker()
     
-    pp(makyr.read_config())
+    # pp(makyr.read_config())
     
-    star_sequence = makyr.get_rarity(4)
-    print("DIMENSION ", star_sequence.shape)
-    cv2.imshow("Star Sequence", star_sequence)
+    img_path = makyr.img_path_gen("logo", "feh.png")
+    cv2.imshow("image", cv2.imread(img_path))
+    # star_sequence = makyr.get_rarity(4)
+    # print("DIMENSION ", star_sequence.shape)
+    # cv2.imshow("Star Sequence", star_sequence)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     
     resized = makyr.resize_element(star_sequence, 50, keep_aspect_ratio=True)
-    print("DIMENSION ", resized.shape)
-    cv2.imshow("Star Sequence", resized)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # print("DIMENSION ", resized.shape)
+    # cv2.imshow("Star Sequence", resized)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
