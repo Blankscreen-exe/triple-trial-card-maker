@@ -256,8 +256,8 @@ class TTCardMaker:
             raise ValueError("rarity must be between 1 and 5.")
 
         # Load the filled and empty star images
-        filled_star = cv2.imread('./Assets/stars/star_fill.png')
-        empty_star = cv2.imread('./Assets/stars/star_empty.png')
+        filled_star = Image.open(os.path.join(self.stars_directory, 'star_fill.png'))
+        empty_star = Image.open(os.path.join(self.stars_directory, 'star_empty.png'))
 
         # Ensure the images have the same dimensions
         if filled_star.shape != empty_star.shape:
