@@ -46,7 +46,7 @@ class CardMaker:
         self.card_elements = {}
         self._base = None
         
-    def generate_card_base(self, height:float=None, width:float=None)->self:
+    def generate_card_base(self, height:float=None, width:float=None)->object:
         """Generates base card to draw upon"""
         if height is None:
             height = self.card_height
@@ -63,11 +63,14 @@ class CardMaker:
     
     @base_exists
     def get_base_image(self)->np:
-        """getter for base card image"""
-        return self._base
+        """getter for base card image
+        
+        Return Image object of the _base image
+        """
+        return Image.fromarray(self._base)
     
     @base_exists
-    def load_asset(self, key_path:str, img:str)->self:
+    def load_asset(self, key_path:str, img:str)->object:
         """loads an image and stores them within a hashtable(python dictionary)"""
         keys = key_path.split('.')
 
@@ -90,29 +93,31 @@ class CardMaker:
                 if loaded_img.shape[2] == 3:  # If image doesn't have an alpha channel
                     alpha = np.full((loaded_img.shape[0], loaded_img.shape[1], 1), 255, dtype=np.uint8)
                     loaded_img = np.concatenate((loaded_img, alpha), axis=2)
-            print("CONVERTED TO PNG")
         else:
-            loaded_img = img
+            loaded_img = np.array(img)
             
         self.card_elements[last_key] = loaded_img
         
         return self
     
-    def get_asset(self, key_path:str)->np:
-        """retrieves stored assets"""
+    def get_asset(self, key_path:str)->object:
+        """retrieves stored assets
+        
+        Returns Image object corresponding to key
+        """
         found_image = self.card_elements
         
         for key in key_path.split("."):
             found_image = found_image[key]
-            
-        return found_image
 
-    def resize(self, key_path, height:float=None, width:float=None, keep_aspect_ratio:bool=True)->self:
+        return Image.fromarray(found_image)
+
+    def resize(self, key_path, height:float=None, width:float=None, keep_aspect_ratio:bool=True)->object:
         """resizes loaded assets"""
         image = self.get_asset(key_path)  # Assuming you have a method to retrieve images
         
         # Convert NumPy array to a Pillow Image
-        pillow_image = Image.fromarray(image)
+        pillow_image = image
         
         if keep_aspect_ratio:
             
@@ -143,20 +148,26 @@ class CardMaker:
         
         return self
     
-    def overlay(self, base_image_path:str, overlay_key_path:str, pos_x:float=0, pos_y:float=0)->self:
-        """overlay two images and positions them relatively"""
+    def overlay(self, base_image_path:str, overlay_key_path:str, pos_x:float=0, pos_y:float=0):
+        """overlay two images and positions them relatively.
+        stores the final image as Image object in the base_image_path"""
+
         # Load the base image
-        base_image = Image.fromarray(self.get_asset(base_image_path))
+        base_image = self.get_base_image() if base_image_path == "__base__" else self.get_asset(base_image_path)
         
         # Load the overlay image using load_asset method
         overlay_image = self.get_asset(overlay_key_path)
         
         # Paste the overlay image onto the base image at the specified position
         base_image.paste(overlay_image, (pos_x, pos_y), overlay_image)
-        
-        self._base = base_image
+                
+        self.load_asset(base_image_path, base_image)
         
         return self
+    
+    def save_to_base_image(self, key_path:str):
+        """saves asset to base image"""
+        self.overlay("__base__", key_path)
     
     def factory_reset(self)->None:
         """factory reset all the loaded assets"""
@@ -169,7 +180,14 @@ class CardMaker:
     def show_image(self, key_path:str)->None:
         """displays loaded images"""
         asset = self.get_asset(key_path)
-        Image.fromarray(asset).show()
+        asset.show()
+        
+    def get_asset_list(self):
+        """gets names of loaded assets and returns a list"""
+        return tuple( name for name in self.card_elements.keys())
+    
+    def show_finalized_card(self):
+        self.get_base_image().show()
     
     @base_exists
     def dump_card(self, output_path:str, output_fimename:str)->None:
